@@ -275,6 +275,16 @@ def test_hook_blocks_and_allows(ga: GitApprove, tmp_path: Path) -> None:
     git(tmp_path, "commit", "-m", "approved")
 
 
+def test_pending(ga: GitApprove, tmp_path: Path) -> None:
+    stage(tmp_path, "a.txt", "one\n")
+    stage(tmp_path, "b.txt", "two\n")
+    assert ga.pending() == ["a.txt", "b.txt"]  # no ledger -> all pending
+    ga.approve(("a.txt",))
+    assert ga.pending() == ["b.txt"]
+    ga.approve(("b.txt",))
+    assert ga.pending() == []
+
+
 def test_pre_commit_enforcement(ga: GitApprove, tmp_path: Path) -> None:
     stage(tmp_path, "a.txt", "one\n")
     assert ga.pre_commit() == 0  # no ledger -> inactive, allowed

@@ -55,6 +55,13 @@ def status(paths: tuple[str, ...], quiet: bool) -> None:
     raise SystemExit(GitApprove.open().status(paths, quiet=quiet))
 
 
+@cli.command()
+def pending() -> None:
+    """Print staged files that are not approved, one per line."""
+    for path in GitApprove.open().pending():
+        click.echo(path)
+
+
 @cli.group()
 def hooks() -> None:
     """Entry points invoked by the installed git hook scripts."""

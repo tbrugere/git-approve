@@ -204,6 +204,16 @@ class GitApprove:
         else:
             click.echo("enforcement was not active")
 
+    def pending(self) -> list[str]:
+        """Staged paths that are not approved, sorted.
+
+        With no ledger nothing is approved, so every staged path is pending —
+        which is what an editor wants when reviewing before opting in.
+        """
+        approved = self.ledger.read()
+        staged = self.staged_entries()
+        return sorted(p for p, oid in staged.items() if (oid, p) not in approved)
+
     def pre_commit(self) -> int:
         """Enforcement step for the pre-commit hook: block if anything is pending.
 

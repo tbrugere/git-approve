@@ -43,6 +43,15 @@ git-approve disable              # remove the ledger, turning enforcement off fo
 
 git also exposes the console script as a subcommand: `git approve <subcommand>`.
 
+`git-approve pending` prints staged-but-unapproved paths, one per line — the
+hook for editor integration.
+
+## Neovim plugin
+
+[`nvim/`](nvim/) ships fugitive-flavored commands: `:GApproveReview` opens a
+difftool of just the staged-and-unapproved files, and `:GApprove` / `:GUnapprove`
+act on the current file. See [nvim/README.md](nvim/README.md).
+
 ## Development
 
 ```sh
