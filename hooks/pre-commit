@@ -1,0 +1,20 @@
+#!/bin/sh
+# git-approve pre-commit hook.
+#
+# Deployed globally via:  git config --global core.hooksPath <project>/hooks
+# Opt-in per worktree: only enforces when a `<git-dir>/approved` ledger exists.
+gitdir=$(git rev-parse --git-dir) || exit 0
+
+# 1. Chain a repo-local pre-commit first (core.hooksPath otherwise shadows it).
+if [ -x "$gitdir/hooks/pre-commit" ]; then
+    "$gitdir/hooks/pre-commit" "$@" || exit $?
+fi
+
+# 2. Opt-in + enforce. The ledger check stays in the shell as a fail-safe: since
+#    core.hooksPath is global, gating the git-approve call on the ledger means a
+#    missing/broken git-approve never blocks commits in repos that haven't opted
+#    in. The enforcement logic and messaging live in `git-approve hooks
+#    pre-commit` (which reads GIT_INDEX_FILE, so partial commits are evaluated
+#    against exactly the subset being committed).
+[ -f "$gitdir/approved" ] && exec git-approve hooks pre-commit
+exit 0

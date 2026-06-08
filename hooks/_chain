@@ -1,0 +1,21 @@
+#!/bin/sh
+# Generic hook chainer for git-approve's global core.hooksPath.
+#
+# Because core.hooksPath replaces .git/hooks lookup wholesale, any repo-local
+# hook (husky, lefthook, etc.) otherwise stops firing. Symlink this script under
+# each hook name you want to keep chaining, e.g.:
+#
+#   for h in commit-msg prepare-commit-msg pre-push post-commit \
+#            post-checkout post-merge pre-rebase; do
+#       ln -s _chain "$(dirname "$0")/$h"
+#   done
+#
+# It execs the repo-local hook of the same name when one exists and is
+# executable; otherwise it succeeds silently.
+name=$(basename "$0")
+gitdir=$(git rev-parse --git-dir) || exit 0
+local_hook="$gitdir/hooks/$name"
+if [ -x "$local_hook" ]; then
+    exec "$local_hook" "$@"
+fi
+exit 0

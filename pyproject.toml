@@ -1,0 +1,36 @@
+[project]
+name = "git-approve"
+version = "0.1.0"
+description = "Per-file approval bit for staged git changes, enforced by a pre-commit hook"
+readme = "README.md"
+authors = [
+    { name = "Tristan Brugère", email = "t.brugere@nrjx.tech" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "click>=8.1",
+    "pygit2>=1.16",
+]
+
+[project.scripts]
+git-approve = "git_approve.cli:cli"
+
+[build-system]
+requires = ["uv_build>=0.11.9,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15.16",
+    "ty>=0.0.44",
+]
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ty.environment]
+python-version = "3.14"
