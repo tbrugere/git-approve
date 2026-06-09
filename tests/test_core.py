@@ -285,6 +285,33 @@ def test_pending(ga: GitApprove, tmp_path: Path) -> None:
     assert ga.pending() == []
 
 
+def test_wait_returns_when_all_approved(ga: GitApprove, tmp_path: Path) -> None:
+    stage(tmp_path, "a.txt", "one\n")
+    ga.approve()
+    assert ga.wait(timeout=0.01) == 0  # nothing pending -> immediate
+
+
+def test_wait_times_out(ga: GitApprove, tmp_path: Path) -> None:
+    stage(tmp_path, "a.txt", "one\n")
+    ga.enable()  # a.txt pending, never approved
+    assert ga.wait(interval=0.01, timeout=0.05) == 1
+
+
+def test_wait_unblocks_on_approval(
+    ga: GitApprove, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stage(tmp_path, "a.txt", "one\n")
+    ga.enable()
+    staged = ga.staged_entries()
+
+    # Approve during the first poll's sleep, so the next poll sees it done.
+    def fake_sleep(_seconds: float) -> None:
+        ga.ledger.write({(staged["a.txt"], "a.txt")})
+
+    monkeypatch.setattr("git_approve.core.time.sleep", fake_sleep)
+    assert ga.wait(interval=0.01) == 0
+
+
 def test_pre_commit_enforcement(ga: GitApprove, tmp_path: Path) -> None:
     stage(tmp_path, "a.txt", "one\n")
     assert ga.pre_commit() == 0  # no ledger -> inactive, allowed

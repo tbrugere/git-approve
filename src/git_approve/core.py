@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -213,6 +214,28 @@ class GitApprove:
         approved = self.ledger.read()
         staged = self.staged_entries()
         return sorted(p for p, oid in staged.items() if (oid, p) not in approved)
+
+    def wait(self, interval: float = 1.0, timeout: float | None = None) -> int:
+        """Block until no staged file is pending; return 0, or 1 on timeout.
+
+        Designed to be launched in the background by an agent: it stages work,
+        runs `git-approve wait`, and is resumed when the command exits because a
+        human has approved everything. The staged set is recomputed each poll,
+        so files staged or re-staged while waiting are accounted for.
+        """
+        deadline = None if timeout is None else time.monotonic() + timeout
+        last: list[str] | None = None
+        while True:
+            pending = self.pending()
+            if not pending:
+                return 0
+            if pending != last:
+                click.echo(f"waiting on {len(pending)} unapproved file(s)...", err=True)
+                last = pending
+            if deadline is not None and time.monotonic() >= deadline:
+                click.echo("timed out waiting for approval", err=True)
+                return 1
+            time.sleep(interval)
 
     def pre_commit(self) -> int:
         """Enforcement step for the pre-commit hook: block if anything is pending.

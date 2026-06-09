@@ -62,6 +62,20 @@ def pending() -> None:
         click.echo(path)
 
 
+@cli.command()
+@click.option("--interval", type=float, default=1.0, show_default=True,
+              help="Seconds between checks.")
+@click.option("--timeout", type=float, default=None,
+              help="Give up and exit 1 after this many seconds.")
+def wait(interval: float, timeout: float | None) -> None:
+    """Block until all staged files are approved (for agent/background use).
+
+    Exits 0 once nothing is pending, or 1 on --timeout. Run it in the background
+    and have your agent resume when it exits.
+    """
+    raise SystemExit(GitApprove.open().wait(interval=interval, timeout=timeout))
+
+
 @cli.group()
 def hooks() -> None:
     """Entry points invoked by the installed git hook scripts."""

@@ -36,6 +36,8 @@ git-approve revoke  [PATHS...]   # un-approve all, or just PATHS (enforcement st
 git-approve status  [-q] [PATHS] # show ✓/✗ per staged file; exit 1 if any pending  (alias: gcs)
 git-approve enable               # opt this worktree into enforcement (empty ledger)
 git-approve disable              # remove the ledger, turning enforcement off for this worktree
+git-approve pending              # list staged-but-unapproved paths (one per line)
+git-approve wait [--timeout S]   # block until everything staged is approved, then exit 0
 ```
 
 `enable`/`disable` are the explicit on/off switch for a worktree. The first
@@ -45,6 +47,34 @@ git also exposes the console script as a subcommand: `git approve <subcommand>`.
 
 `git-approve pending` prints staged-but-unapproved paths, one per line — the
 hook for editor integration.
+
+## Agent workflow
+
+`git-approve wait` lets an agent hand off for human review without polling:
+the agent stages partial work and runs `wait` in the **background**, which
+blocks until every staged file is approved, then exits 0. In Claude Code, a
+backgrounded command resuming the agent on exit means the loop is just:
+
+1. stage work, `git-approve enable` (if not already on);
+2. run `git-approve wait` as a background task and end the turn;
+3. on resume (all approved), commit.
+
+The staged set is re-checked each poll, so files staged or re-staged while
+waiting are picked up. `--timeout` is a safety valve (exit 1).
+
+### Claude Code skill
+
+[`.claude/skills/approve-gate/`](.claude/skills/approve-gate/SKILL.md) packages
+that loop as a `/approve-gate` skill (stage → `enable` → background `wait` →
+commit on resume). Install it personally so it works in any project:
+
+```sh
+ln -s "$(pwd)/.claude/skills/approve-gate" ~/.claude/skills/approve-gate
+# or copy:  cp -r .claude/skills/approve-gate ~/.claude/skills/
+```
+
+The skill never approves on your behalf — it only sets up the gate and resumes
+once you've approved everything.
 
 ## Neovim plugin
 
