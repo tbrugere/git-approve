@@ -7,6 +7,7 @@
 "                     that are NOT approved (your review queue).
 "   :GApprove  [path] approve PATH (default: the current file).
 "   :GUnapprove [path] revoke PATH (default: the current file).
+"   :GApproveStage    save the current buffer, stage it, and approve it.
 
 if exists('g:loaded_git_approve')
   finish
@@ -59,6 +60,18 @@ function! s:Run(subcmd, args) abort
   echo substitute(l:out, '\_s\+$', '', '')
 endfunction
 
+" Save the current buffer, stage it (fugitive's :Gwrite), and approve it.
+function! s:StageApprove() abort
+  let l:file = s:CurrentFile()
+  if empty(l:file)
+    echohl ErrorMsg | echom 'git-approve: no file' | echohl None
+    return
+  endif
+  Gwrite
+  call s:Run('approve', '')
+endfunction
+
 command! GApproveReview call s:Review()
 command! -nargs=* -complete=file GApprove call s:Run('approve', <q-args>)
 command! -nargs=* -complete=file GUnapprove call s:Run('revoke', <q-args>)
+command! GApproveStage call s:StageApprove()

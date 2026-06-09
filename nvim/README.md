@@ -11,6 +11,7 @@ executable on `$PATH`.
 | `:GApproveReview` | Like `:Git difftool -y --cached`, but shows only staged files that are **not approved** — your review queue. |
 | `:GApprove [path]`  | Approve `path` (defaults to the current file, fugitive buffers included).  |
 | `:GUnapprove [path]`| Revoke `path` (defaults to the current file).                              |
+| `:GApproveStage`    | Save the current buffer, stage it (`:Gwrite`), and approve it — "lock in this file." |
 
 The typical loop: `:GApproveReview` to diff the unapproved staged files, then
 `:GApprove` on each one you've reviewed (works from inside the diff buffer).
