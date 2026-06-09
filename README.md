@@ -62,19 +62,24 @@ backgrounded command resuming the agent on exit means the loop is just:
 The staged set is re-checked each poll, so files staged or re-staged while
 waiting are picked up. `--timeout` is a safety valve (exit 1).
 
-### Claude Code skill
+### Claude Code skills
 
-[`.claude/skills/approve-gate/`](.claude/skills/approve-gate/SKILL.md) packages
-that loop as a `/approve-gate` skill (stage → `enable` → background `wait` →
-commit on resume). Install it personally so it works in any project:
+Two skills under [`.claude/skills/`](.claude/skills/) drive an agent through the
+gate (neither ever approves on your behalf):
+
+- **[`/approve-gate`](.claude/skills/approve-gate/SKILL.md)** — gate a single
+  staged batch: stage → `enable` → background `wait` → commit on resume.
+- **[`/commit-review`](.claude/skills/commit-review/SKILL.md)** — split the work
+  into small atomic commits, then for each one stage it, ping you, wait for
+  approval, and commit before moving to the next.
+
+Install them personally so they work in any project:
 
 ```sh
-ln -s "$(pwd)/.claude/skills/approve-gate" ~/.claude/skills/approve-gate
-# or copy:  cp -r .claude/skills/approve-gate ~/.claude/skills/
+ln -s "$(pwd)/.claude/skills/approve-gate"  ~/.claude/skills/approve-gate
+ln -s "$(pwd)/.claude/skills/commit-review" ~/.claude/skills/commit-review
+# or copy:  cp -r .claude/skills/* ~/.claude/skills/
 ```
-
-The skill never approves on your behalf — it only sets up the gate and resumes
-once you've approved everything.
 
 ## Neovim plugin
 
