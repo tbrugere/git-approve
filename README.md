@@ -6,29 +6,24 @@ A per-file **approval bit** for staged git changes, enforced by a global
 ## Why
 
 My workflow before:
-- elaborate detailed plan with agent
-- agent codes everything, but does not stage or commit
-- I review every file. Each time I reviewed a file I stage it (generally using `nvim + fugitive` for difftool)
-- I commit and push
+1. *Plan* with agent
+2. *Agent codes everything*, but does not stage or commit
+3. *Review every file*. stage reviewed file. 
+4. Commit and push
 
-Pain point: that review process is painful because I have to review all the code for the whole feature at once. It would be easier to review smaller patches. Plus it would be better for my git history too. Model could just stage a partial commit, and I could review that. 
+**Pain point:** Reviewing everything at once is hard. It would be easier to review smaller patches.  
 
-Problem: That’s great, but now I cannot use the staging area to mark changes as approved, since the model stages partial changes. Hence tooling to mark staged changes as approved.
+**Problem:** Now I cannot use the staging area to mark changes as approved, since the model stages partial changes.
 
-New Workflow: an agent stages part of the work; a human reviews the staged diff
-(e.g. with the `nvds` alias = `nvim -c "G difftool -y --cached"`) and only then
-commits. Once an agent does the staging, staging can no longer double as the
+New Workflow: 
+1. Agent stages part of the work
+2. Agent uses `/approve-gate` skill to wait for approval
+2. Human reviews the staged diff
+3. Agent commits the reviewed changes
+
+Once an agent does the staging, staging can no longer double as the
 approval step, and git has no native per-file "approved" flag on the index — so
 this builds one.
-
-Alternative: I could keep this workflow, but have the model `git stash` all pending changes but the part I’m reviewing. But with multiple worktrees working in parallel, managing all those stashes would become hell.
-
-**Core property 1:** This ships with a pre-commit hook that checks for approval on all staged changes when enabled. You cannot commit unapproved changes. Now I feel quite a lot more confident allowing my agent to commit / stage itself because the code still *has* to go through me.
-
-**Core property 2:** approval is keyed to the **staged blob oid**, not just the
-path. If different content is re-staged for an already-approved file, the oid
-changes and the approval is automatically void. You can never commit content you
-never reviewed.
 
 ## How it works
 
