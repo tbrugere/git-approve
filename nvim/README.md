@@ -8,7 +8,7 @@ implemented directly on `git`, not on vim-fugitive.
 
 | Command           | Description                                                                 |
 |-------------------|-----------------------------------------------------------------------------|
-| `:GApproveReview` | Open a diff tab for each staged-but-**unapproved** file (your review queue): HEAD on the left, the **staged** version on the right. New files diff against an empty left side. |
+| `:GApproveReview` | Open a diff tab for each staged-but-**unapproved** file (your review queue): HEAD on the left, the **staged** version on the right. Newly-added files (no HEAD version) are shown fullscreen, with no empty side. |
 | `:GApprove [path]`  | Approve `path` (defaults to the current file; works from inside a review diff). |
 | `:GUnapprove [path]`| Revoke `path` (defaults to the current file).                              |
 | `:GApproveStage`    | Stage the current buffer's text into the index (the working-tree file is **not** modified) and approve it — "lock in what I'm looking at." Works on a normal file buffer or on a review diff's staged side. |

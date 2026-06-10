@@ -85,30 +85,44 @@ local function scratch(lines, name, path, modifiable)
   return buf
 end
 
--- Open one tab diffing HEAD (or empty, for added files) against the staged
--- blob. Returns the new tabpage handle, or nil on failure.
+-- Tag the staged (right) buffer so the approve/refresh logic can find it.
+local function mark_staged(buf, path)
+  vim.b[buf].git_approve_path = path
+  vim.b[buf].git_approve_staged = true
+end
+
+-- Open one tab for `path`. For a tracked file: HEAD (left) vs staged (right).
+-- For an added file (no HEAD version) there is nothing to diff against, so just
+-- show the staged content fullscreen. Returns the new tabpage handle, or nil.
 local function open_diff(root, path)
   local staged = blob(root, '', path)
   if not staged then
     err('cannot read staged version of ' .. path)
     return
   end
-  local head = head_has(root, path) and (blob(root, 'HEAD', path) or {}) or {}
 
   vim.cmd('tabnew')
 
-  -- Left: HEAD / empty (read-only).
-  local lbuf = scratch(head, path .. ' ◍HEAD', path, false)
+  if not head_has(root, path) then
+    -- Added file: staged content fullscreen, no empty companion.
+    local rbuf = scratch(staged, path .. ' ◍staged (new)', path, true)
+    vim.api.nvim_win_set_buf(0, rbuf)
+    mark_staged(rbuf, path)
+    return vim.api.nvim_get_current_tabpage()
+  end
+
+  -- Left: HEAD (read-only).
+  local lbuf = scratch(blob(root, 'HEAD', path) or {}, path .. ' ◍HEAD', path, false)
   vim.api.nvim_win_set_buf(0, lbuf)
   vim.b[lbuf].git_approve_path = path
   vim.cmd('diffthis')
 
-  -- Right: staged (editable, so it can be tweaked and re-staged).
-  vim.cmd('vsplit')
+  -- Right: staged (editable, so it can be tweaked and re-staged). `rightbelow`
+  -- forces the new window to the right regardless of the user's 'splitright'.
+  vim.cmd('rightbelow vsplit')
   local rbuf = scratch(staged, path .. ' ◍staged', path, true)
   vim.api.nvim_win_set_buf(0, rbuf)
-  vim.b[rbuf].git_approve_path = path
-  vim.b[rbuf].git_approve_staged = true
+  mark_staged(rbuf, path)
   vim.cmd('diffthis')
   return vim.api.nvim_get_current_tabpage()
 end
