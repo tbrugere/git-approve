@@ -92,9 +92,11 @@ ln -s "$(pwd)/.claude/skills/commit-review" ~/.claude/skills/commit-review
 
 ## Neovim plugin
 
-[`nvim/`](nvim/) ships fugitive-flavored commands: `:GApproveReview` opens a
-difftool of just the staged-and-unapproved files, and `:GApprove` / `:GUnapprove`
-act on the current file. See [nvim/README.md](nvim/README.md).
+[`nvim/`](nvim/) ships a small Lua plugin (Neovim only, no vim-fugitive
+dependency): `:GApproveReview` opens a HEAD-vs-staged diff of just the
+staged-and-unapproved files — auto-refreshing the staged side as files are
+re-staged — and `:GApprove` / `:GUnapprove` act on the current file. See
+[nvim/README.md](nvim/README.md).
 
 ## Development
 
