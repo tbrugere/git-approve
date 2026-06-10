@@ -9,9 +9,13 @@ description: >-
   git-approve CLI until it is approved, then commits and moves to the next.
   Requires the git-approve CLI and its pre-commit hook installed.
 argument-hint: [scope / instructions]
+allowed-tools: Bash(git add:*), Bash(git commit -F - --no-edit), Bash(git-approve enable:*), Bash(git-approve pending:*), Bash(git-approve wait:*)
+disallowed-tools: Bash(git commit --no-verify:*), Bash(git commit -n:*), Bash(git-approve approve:*), Bash(git-approve disable:*)
 ---
 
 # commit-review
+
+!`git-approve enable`
 
 Turn the current changes into a sequence of small, atomic commits, and gate each
 one on the human's approval before it is committed.
@@ -20,6 +24,9 @@ one on the human's approval before it is committed.
 - Never approve on the user's behalf (do not run `git-approve approve`) and never
   bypass the hook (`git commit --no-verify`). You stage, ping, and wait —
   approval is the human's.
+- Commit only with `git commit -F - --no-edit`, passing the message on **stdin**
+  (a heredoc). This is the single pre-approved commit form: never use `-m`, an
+  editor, `--no-verify`/`-n`, or any other variant — anything else will prompt.
 - Follow the project's existing commit conventions (study `git log` first).
 - Each commit must be atomic and self-consistent (ideally independently
   buildable): split unrelated changes apart, keep related ones together.
@@ -32,7 +39,8 @@ one on the human's approval before it is committed.
 - Draft an **ordered list of atomic commits** — each with the files/hunks it
   covers and a proposed message — and show it to the user before starting.
   Fold in `$ARGUMENTS` if provided.
-- Turn enforcement on so commits are actually gated: `git-approve enable`.
+- Enforcement is turned on automatically when this skill loads (`git-approve
+  enable` runs on invocation), so commits are gated from the start.
 
 ## 2. Per-commit loop
 
@@ -52,8 +60,24 @@ For each planned commit, in order:
 3. **Wait for approval.** Run `git-approve wait` with the Bash tool and
    `run_in_background: true`, then end your turn. It blocks until everything
    staged is approved, then exits 0 and you are resumed.
-4. **On resume**, confirm `git-approve pending` prints nothing, then `git commit`
-   with the prepared message. Continue to the next planned commit.
+4. **On resume**, commit with the prepared message on stdin. No need to re-check
+   `git-approve pending` first: `wait` only returns once everything staged is
+   approved, and the pre-commit hook rejects the commit with an explicit error
+   otherwise.
+   ```
+   git commit -F - --no-edit <<'MSG'
+   <subject line>
+
+   <body, if any>
+   MSG
+   ```
+   Continue to the next planned commit.
+
+**If the user asks for changes** (instead of approving): make the edits and
+**re-stage** the affected files (`git add <paths>`) — do **not** unstage them.
+Re-staging updates the staged blob in place, so the user's open `:GApproveReview`
+diff refreshes to the new version automatically (and re-staging voids the old
+approval for that file). Then re-ping and `git-approve wait` again.
 
 If `wait` exits non-zero (e.g. a `--timeout` you set), approval did not
 complete — report that and do not commit.
