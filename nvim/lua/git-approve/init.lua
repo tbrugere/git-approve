@@ -11,6 +11,14 @@ local uv = vim.uv or vim.loop
 
 -- Per-git-dir index mtime, so external `git add`s can be detected cheaply.
 local index_mtime = {}
+-- The git dir whose index we watch (set when a review opens), the libuv fs
+-- watcher, and a polling timer used only as a fallback.
+local watched_gitdir = nil
+local fs_watcher = nil
+local poll_timer = nil
+-- forward declarations (defined below, used by review())
+local start_watch
+local start_poll
 
 local function err(msg)
   vim.api.nvim_echo({ { 'git-approve: ' .. msg, 'ErrorMsg' } }, true, {})
@@ -145,6 +153,9 @@ function M.review()
   if first then
     vim.api.nvim_set_current_tabpage(first)
   end
+  -- Watch this repo's git dir so external re-stages refresh the diff.
+  watched_gitdir = git_dir(root) or watched_gitdir
+  start_watch()
 end
 
 -- Reload the staged side of any diff in the current tab (content-only).
@@ -167,26 +178,30 @@ local function refresh_staged()
   vim.cmd('diffupdate')
 end
 
--- Cheap autocmd hook: only does work when the visible tab has a review diff and
--- the index actually changed since last seen.
-function M.maybe_refresh()
-  local has = false
+local function current_tab_has_staged()
   for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
     if vim.b[vim.api.nvim_win_get_buf(win)].git_approve_staged then
-      has = true
-      break
+      return true
     end
   end
-  if not has then
+  return false
+end
+
+-- Cheap hook (watcher-, autocmd-, and timer-driven): refresh only when the tab has
+-- a review diff and the index changed since last seen. The git dir is resolved
+-- once (cached in `watched_gitdir`) so polling never shells out — it just stats.
+function M.maybe_refresh()
+  if not current_tab_has_staged() then
     return
   end
-  local root = repo_root()
-  if not root then
-    return
-  end
-  local gd = git_dir(root)
+  local gd = watched_gitdir
   if not gd then
-    return
+    local root = repo_root()
+    gd = root and git_dir(root) or nil
+    if not gd then
+      return
+    end
+    watched_gitdir = gd
   end
   local st = uv.fs_stat(gd .. '/index')
   local mtime = st and (st.mtime.sec * 1000000000 + st.mtime.nsec) or 0
@@ -195,6 +210,46 @@ function M.maybe_refresh()
   end
   index_mtime[gd] = mtime
   refresh_staged()
+end
+
+-- Watch the git dir for index changes so re-stages refresh the diff instantly.
+-- We watch the *directory*, not the index file: git replaces the index via an
+-- atomic rename (index.lock -> index), which would break a watch bound to the
+-- original file. maybe_refresh()'s mtime guard ignores unrelated .git churn.
+-- Falls back to polling if the platform/filesystem can't start an fs event.
+function start_watch()
+  if not watched_gitdir then
+    return
+  end
+  if fs_watcher then
+    fs_watcher:stop()
+    fs_watcher = nil
+  end
+  local w = uv.new_fs_event()
+  local ok = w and w:start(watched_gitdir, {}, vim.schedule_wrap(function()
+    M.maybe_refresh()
+  end))
+  if ok == 0 then
+    fs_watcher = w
+  else
+    if w then
+      pcall(function()
+        w:stop()
+      end)
+    end
+    start_poll()
+  end
+end
+
+-- Polling fallback for when fs events aren't available (focus/buffer autocmds
+-- are unreliable — terminal/tmux may not deliver them). The mtime guard keeps
+-- each tick to a single stat.
+function start_poll()
+  if poll_timer then
+    return
+  end
+  poll_timer = uv.new_timer()
+  poll_timer:start(1000, 1000, vim.schedule_wrap(M.maybe_refresh))
 end
 
 -- The file the approve/stage commands act on, as an absolute path.

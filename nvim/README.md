@@ -18,9 +18,10 @@ The typical loop: `:GApproveReview` to diff the unapproved staged files, then
 
 **Auto-refresh.** While a `:GApproveReview` diff is open, the staged (right) side
 updates automatically when a file is re-staged — whether from a terminal
-(`git add` / `gok`) or from `:GApproveStage`. Switching back to Neovim
-(`FocusGained`) refreshes immediately; a buffer you've edited yourself is left
-alone so your in-progress changes are never clobbered.
+(`git add` / `gok`) or from `:GApproveStage`. It uses a libuv filesystem watch on
+the git directory (falling back to polling where fs-events aren't supported), so
+it does not depend on terminal/tmux focus events. A buffer you've edited yourself
+is left alone, so in-progress changes are never clobbered.
 
 **Editable staged side.** The right (staged) buffer is editable: tweak it and run
 `:GApproveStage` to re-stage exactly what you typed and approve it, all without
